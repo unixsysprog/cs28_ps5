@@ -1,0 +1,47 @@
+
+README for Assignment 5 - Smsh
+
+  Student: William Gottschalk
+  Date: 4/17/2018
+
+Summary:
+
+  This submission contains the files:
+
+    Makefile    -- the makefile
+    Plan        -- a description of the design and operation of my code
+    typescript  -- a sample run
+
+  builtin.c - houses the logic to determine whether a shell command is a builtin
+      c command such as cd or ls.
+  builtin.h - header files for builtin.c
+
+  controlflow.c - contains functions that update the control flow logic when
+      when processing the bash scripts. It has logic to determine whether to
+      execute a then or else block of an if statement.
+  controlflow.h - header files for controlflow.c
+
+  flexstr.c - flexible string implementation. Provided to us. Unmodified.
+  flexstr.h - flexible string header file. Provided to us. Unmodified.
+
+  process.c - functions for determining whether to execute a builtin command
+      or to fork a child process and exec it.
+  process.h - header files for process.c 
+
+  smsh5.c - the entry point to the application. Defines a function called
+      execute_file which begins processing a file stream (either stdin or a 
+      particular filename).
+
+  splitline.c - contains functions for splitting the cmdline string into an
+      array of arguments. Unmodified.
+  splitline.h - header files for splitline.c. Unmodified.
+
+  varlib.c - tracks the environment and bash variables stored for a process.
+      also performs variable substitution on the cmdline string before it 
+      gets split into and arglist by splitline.
+  varlib.h - header files for splitline.c
+
+Notes:
+  Sorry about the late submission. I found the assignment to be challenging to
+  get started but I loved working on it. I feel that a lot of dots got connected
+  because of this assignment.

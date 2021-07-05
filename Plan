@@ -1,0 +1,121 @@
+Design Document for Smsh
+-----------------------------------------------------------
+Code by: William Gottschalk
+Date: 4/17/2018
+-----------------------------------------------------------
+
+Write Up:
+1. The cd builtin
+    defines 2 new functions: is_cd and exec_cd in builtin.c. is_cd checks to 
+    see if the argument starts with cd and then calls exec_cd. exec_cd calls 
+    the chdir system call.
+
+2. The exit builtin
+    defines 2 new functions: is_exit and exec_exit in builtin.c. is_exit checks 
+    to see if the argument is an exit command and then calls exec_cd. exec_cd 
+    either exits with a provided status code or with 0. It errors if too many
+    arguments are supplied.
+
+3. The read builtin
+    defines 2 new functions: is_read and exec_read in builtin.c. is_read checks 
+    to see if the argument is a read call and then calls exec_read. exec_read
+    calls next_cmd function since that doesn't include the \n character like
+    read does. The value is then added to the VLstore under the provided key or
+    REPLY by default.
+
+4. Comments
+    Since comments are single line and span the whole length of the line,
+    I added a check during splitargs to look for # characters in addition to the
+    \0 char.
+
+5. Commands from scripts
+    To add script support, I added a check in smsh5.c in the main function.
+    If the user supplies an additional argument, then instead of reading from
+    stdin, a file is opened and passed into the execute_file command.
+
+6. Variable substitution
+    Since it felt easier to substitute the string before it was split, I defined
+    a function call substitute_variables in varlib.c. It's written as a mini
+    parser, iterating over the string until it finds a '\' or a '$'. If it's a
+    '\' it calls the escape_char function, and if it's a $, calls the
+    substitute function, which replaces the varable name with it's associated
+    value.
+
+    An edge case that needed to be handled was when a single $ occured,
+    the $ was printed out and no subsitiution occured. Ex: echo \$$ returns $$.
+
+7. Special variables
+    To support $$ (processId) and $? (last exit code status). I had to implement
+    2 pieces. The lookup and the storing. For the lookup, I added a check in
+    the substitute function. For the storage, since $$ is process wide, it's
+    set during setup in smsh5.c. The save_last_result function in smsh5.c adds
+    the result to the VLstore.
+
+8. Command Line args
+    In the main function of smsh5.c If any additional arguments are supplied
+    beyond 2 (executable and optional filename) they're set via VLstore. In the
+    substitute function in varlib.c, an additional check is added to find
+    any of the numerical variable names $1, $2, etc...
+
+9. Quoted characters
+    In order to make characters escapable, a check was added in
+    substitute_variables in varlib.c which looks for '\' and then calls
+    escape_char. Escape char splices the '\' from the string and advances the
+    pointer so skip over the next character.
+
+10. Else part of if.
+    To add the else part of the if statement, an extra check was added in
+    is_control_command in the controlflow.c file to check for else statements.
+    Logic is added to the ok_to_execute function which checks to see if the
+    if_state equals ELSE_BLOCK then looks at the if_result to determine the rv
+    value. Finally a check in do_control_command is added for the else block
+    which checks to see if it's in the correct state
+
+11. Sourcing a file with "."
+    To handle sourcing the file, the main function was refactored into a helper
+    (execute_file). If a command starts with a ".", then the current file is
+    stored in a temp and a new file is opened and a recursive call is made to
+    execute_file to read the new file with the same environment variables.
+
+12. Exec a file
+    For the exec command a built-in command was added similarly to cd, exit, and
+    read. Exec just calls the exec builtin passing in any additional arguments
+
+13. Planning for &
+    To handle the &, there should be a check of the last argument in the execute
+    function in process.c. If the & is there, then call execvp but without the
+    wait in the parent process. We'll have to know the result when the child is
+    done however, so we could use a pipe for communication. Additionally, popen
+    could be used in lieu of manually setting of the pipe. 
+
+
+Layering:
+keys:
+    * -> function call
+    - -> function body pseudocode
+
+* main
+    - checks arguments and assigns a file stream to input.
+
+    * execute_file
+        * next_cmd - returns the next line for the file stream
+        * substitute_variables - replaces all bash variables with their value
+        * splitline - splits string on spaces
+        - if the command starts with a "." then we want to source the file by
+            calling execute_file recursively. otherwise..
+        * process
+            - skip the line if the 1st argument is empty
+            * is_control_command - determines if "if", "else", "then" etc.
+            * do_control_command - updates the if_state and if_result values 
+            * ok_to_execute - checks if_state to determine whether or not to
+                execute that block of code
+            * do_command
+                *is_builtin
+                    - calls the is_* functions and if any return true, call
+                        their associated exec_* function
+                *execute
+                    - forks a process and executes the command in the child
+                - returns result of the operation
+        * save_last_result - updates variable store's $? command to contain the
+            last exit status of the process.
+
